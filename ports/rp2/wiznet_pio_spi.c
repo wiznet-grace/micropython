@@ -115,11 +115,11 @@ wiznet_pio_spi_handle_t wiznet_pio_spi_open(const wiznet_pio_spi_config_t *wizne
     pio_sm_config sm_config = WIZNET_PIO_SPI_PROGRAM_GET_DEFAULT_CONFIG_FUNC(state->pio_offset);
 
     sm_config_set_clkdiv_int_frac(&sm_config, state->spi_config->clock_div_major, state->spi_config->clock_div_minor);
-    hw_write_masked(&padsbank0_hw->io[state->spi_config->clock_pin],
+    hw_write_masked(&pads_bank0_hw->io[state->spi_config->clock_pin],
                     (uint)PADS_DRIVE_STRENGTH << PADS_BANK0_GPIO0_DRIVE_LSB,
                     PADS_BANK0_GPIO0_DRIVE_BITS
     );
-    hw_write_masked(&padsbank0_hw->io[state->spi_config->clock_pin],
+    hw_write_masked(&pads_bank0_hw->io[state->spi_config->clock_pin],
                     (uint)1 << PADS_BANK0_GPIO0_SLEWFAST_LSB,
                     PADS_BANK0_GPIO0_SLEWFAST_BITS
     );
