@@ -1,4 +1,4 @@
-# Wiznet W5500-EVB-Pico
+# Wiznet W55RP20-EVB-Pico
 
 ## Network Example
 
@@ -15,4 +15,3 @@ To use network / socket based code, connect ethernet port to network with DHCP r
 >>> nic.isconnected()
 True
 ```
-At this point standard network communications libraries should work.
