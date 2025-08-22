@@ -50,6 +50,9 @@
 	url = https://github.com/andrewleech/wiznet_ioLibrary_Driver.git
 	# Requires https://github.com/Wiznet/ioLibrary_Driver/pull/120
 	# url = https://github.com/Wiznet/ioLibrary_Driver.git
+[submodule "lib/wiznet6k"]
+	path = lib/wiznet6k
+	url = https://github.com/Wiznet/ioLibrary_Driver.git
 [submodule "lib/cyw43-driver"]
 	path = lib/cyw43-driver
 	url = https://github.com/georgerobotics/cyw43-driver.git
@@ -74,6 +77,3 @@
 [submodule "lib/alif-security-toolkit"]
 	path = lib/alif-security-toolkit
 	url = https://github.com/micropython/alif-security-toolkit.git
-[submodule "lib/wiznet6k"]
-	path = lib/wiznet6k
-	url = https://github.com/Wiznet/ioLibrary_Driver.git

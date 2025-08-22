@@ -60,6 +60,15 @@ void wiznet5k_try_poll(void) {
 }
 #endif
 
+#if MICROPY_PY_NETWORK_WIZNET6K
+void wiznet6k_poll(void);
+void wiznet6k_deinit(void);
+
+void wiznet6k_try_poll(void) {
+    pendsv_schedule_dispatch(PENDSV_DISPATCH_WIZNET, wiznet6k_poll);
+}
+#endif
+
 u32_t sys_now(void) {
     return mp_hal_ticks_ms();
 }
@@ -68,6 +77,11 @@ static void pyb_lwip_poll(void) {
     #if MICROPY_PY_NETWORK_WIZNET5K
     // Poll the NIC for incoming data
     wiznet5k_poll();
+    #endif
+
+    #if MICROPY_PY_NETWORK_WIZNET6K
+    // Poll the NIC for incoming data
+    wiznet6k_poll();
     #endif
 
     // Run the lwIP internal updates
