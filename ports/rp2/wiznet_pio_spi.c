@@ -25,21 +25,20 @@
 #define PADS_DRIVE_STRENGTH PADS_BANK0_GPIO0_DRIVE_VALUE_12MA
 #define IRQ_SAMPLE_DELAY_NS 100
 
-#if (_WIZCHIP_QSPI_MODE_ == QSPI_SINGLE_MODE)
-#define PIO_PROGRAM_NAME wizchip_pio_spi_single_write_read
-#elif (_WIZCHIP_QSPI_MODE_ == QSPI_DUAL_MODE)
-#define PIO_PROGRAM_NAME wizchip_pio_spi_dual_write_read
-#elif (_WIZCHIP_QSPI_MODE_ == QSPI_QUAD_MODE)
-#define PIO_PROGRAM_NAME wizchip_pio_spi_quad_write_read
-#endif
-
 #if   (_WIZCHIP_ == W6300)
+    #if (_WIZCHIP_QSPI_MODE_ == QSPI_SINGLE_MODE)
+    #define PIO_PROGRAM_NAME wizchip_pio_spi_single_write_read
+    #elif (_WIZCHIP_QSPI_MODE_ == QSPI_DUAL_MODE)
+    #define PIO_PROGRAM_NAME wizchip_pio_spi_dual_write_read
+    #elif (_WIZCHIP_QSPI_MODE_ == QSPI_QUAD_MODE)
+    #define PIO_PROGRAM_NAME wizchip_pio_spi_quad_write_read
+    #endif
+
     #define PIO_PROGRAM_FUNC __CONCAT(PIO_PROGRAM_NAME, _program)
     #define PIO_PROGRAM_GET_DEFAULT_CONFIG_FUNC __CONCAT(PIO_PROGRAM_NAME, _program_get_default_config)
     #define PIO_OFFSET_WRITE_BITS __CONCAT(PIO_PROGRAM_NAME, _offset_write_bits)  
     #define PIO_OFFSET_WRITE_BITS_END __CONCAT(PIO_PROGRAM_NAME, _offset_write_bits_end)  
     #define PIO_OFFSET_READ_BITS_END __CONCAT(PIO_PROGRAM_NAME, _offset_read_bits_end)
-
 #else
     #define PIO_PROGRAM_NAME wiznet_spi_write_read
     #define PIO_PROGRAM_FUNC __CONCAT(PIO_PROGRAM_NAME, _program)
@@ -48,7 +47,6 @@
     #define PIO_OFFSET_WRITE_BITS_END __CONCAT(PIO_PROGRAM_NAME, _offset_write_end)
     #define PIO_OFFSET_READ_BITS_END __CONCAT(PIO_PROGRAM_NAME, _offset_read_end)
     // All wiznet spi operations must start with writing a 3 byte header
-
 #endif
 
 #ifndef PICO_WIZNET_SPI_PIO_INSTANCE_COUNT
@@ -69,8 +67,6 @@ typedef struct spi_pio_state {
     uint8_t spi_header[SPI_HEADER_LEN];
     uint8_t spi_header_count;
 } spi_pio_state_t;
-
-
 
 static spi_pio_state_t spi_pio_state[PICO_WIZNET_SPI_PIO_INSTANCE_COUNT];
 static spi_pio_state_t *active_state;
@@ -118,6 +114,16 @@ static uint16_t mk_cmd_buf(uint8_t *pdst, uint8_t opcode, uint16_t addr)
 static void pio_spi_gpio_setup(spi_pio_state_t *state) {
 
 #if   (_WIZCHIP_ == W6300)
+    // Setup CS
+    gpio_init(state->spi_config->cs_pin);
+    gpio_set_dir(state->spi_config->cs_pin, GPIO_OUT);
+    gpio_put(state->spi_config->cs_pin, true);
+
+    // Setup reset
+    gpio_init(state->spi_config->irq_pin);
+    gpio_set_dir(state->spi_config->irq_pin, GPIO_IN);
+    gpio_set_pulls(state->spi_config->irq_pin, false, false);
+
     #if (_WIZCHIP_QSPI_MODE_ == QSPI_SINGLE_MODE)
     // Setup DO and DI
     gpio_init(state->spi_config->data_io0_pin);
@@ -149,16 +155,6 @@ static void pio_spi_gpio_setup(spi_pio_state_t *state) {
     gpio_put(state->spi_config->data_io2_pin, false);
     gpio_put(state->spi_config->data_io3_pin, false);
     #endif
-
-    // Setup CS
-    gpio_init(state->spi_config->cs_pin);
-    gpio_set_dir(state->spi_config->cs_pin, GPIO_OUT);
-    gpio_put(state->spi_config->cs_pin, true);
-
-    // Setup reset
-    gpio_init(state->spi_config->irq_pin);
-    gpio_set_dir(state->spi_config->irq_pin, GPIO_IN);
-    gpio_set_pulls(state->spi_config->irq_pin, false, false);
 #else //W55RP20
     // Setup MOSI, MISO and IRQ
     // Setup MOSI, MISO
@@ -381,6 +377,8 @@ static __noinline void ns_delay(uint32_t ns) {
 
 static void wiznet_pio_spi_frame_start(void) {
     assert(active_state);
+    // Pull CS low
+    cs_set(active_state, false);
     #if   (_WIZCHIP_ == W6300)
         #if (_WIZCHIP_QSPI_MODE_ == QSPI_SINGLE_MODE)
         gpio_set_function(active_state->spi_config->data_io0_pin, active_state->pio_func_sel);
@@ -402,9 +400,13 @@ static void wiznet_pio_spi_frame_start(void) {
         gpio_set_function(active_state->spi_config->clock_pin, active_state->pio_func_sel);
         gpio_pull_down(active_state->spi_config->clock_pin);
     #endif
-    // Pull CS low
-    cs_set(active_state, false);
-}
+    
+    #ifdef IRQ_SAMPLE_DELAY_NS
+    ns_delay(IRQ_SAMPLE_DELAY_NS);
+#endif
+
+    
+} 
 
 static void wiznet_pio_spi_frame_end(void) {
     assert(active_state);
@@ -573,7 +575,7 @@ void wiznet_pio_spi_write_byte(uint8_t op_code, uint16_t AddrSel, uint8_t *tx, u
 #else
 // send tx then receive rx
 // rx can be null if you just want to send, but tx and tx_length must be valid
-static bool wiznet_pio_spi_transfer(spi_pio_state_t *state, const uint8_t *tx, size_t tx_length, uint8_t *rx, size_t rx_length) {
+static bool wiznet_pio_spi_transfer_impl(spi_pio_state_t *state, const uint8_t *tx, size_t tx_length, uint8_t *rx, size_t rx_length) {
     assert(state);
     if (!state || (tx == NULL)) {
         return false;
@@ -660,7 +662,7 @@ static uint8_t wiznet_pio_spi_read_byte(void) {
     assert(active_state);
     assert(active_state->spi_header_count == SPI_HEADER_LEN);
     uint8_t ret;
-    if (!wiznet_pio_spi_transfer(active_state, active_state->spi_header, active_state->spi_header_count, &ret, 1)) {
+    if (!wiznet_pio_spi_transfer_impl(active_state, active_state->spi_header, active_state->spi_header_count, &ret, 1)) {
         panic("spi failed read");
     }
     active_state->spi_header_count = 0;
@@ -673,11 +675,11 @@ static void wiznet_pio_spi_write_byte(uint8_t wb) {
 }
 
 // To read a buffer we must first have been asked to write a 3 byte spi header
-static void wiznet_pio_spi_read_buffer(uint8_t* pBuf, uint16_t len) {
+void wiznet_pio_spi_read_buffer(uint8_t* pBuf, uint16_t len) {
 
     assert(active_state);
     assert(active_state->spi_header_count == SPI_HEADER_LEN);
-    if (!wiznet_pio_spi_transfer(active_state, active_state->spi_header, active_state->spi_header_count, pBuf, len)) {
+    if (!wiznet_pio_spi_transfer_impl(active_state, active_state->spi_header, active_state->spi_header_count, pBuf, len)) {
         panic("spi failed reading buffer");
     }
     active_state->spi_header_count = 0;
@@ -686,20 +688,20 @@ static void wiznet_pio_spi_read_buffer(uint8_t* pBuf, uint16_t len) {
 // If we have been asked to write a spi header already, then write it and the rest of the buffer
 // or else if we've been given enough data for just the spi header, save it until the next call
 // or we're writing a byte in which case we're given a buffer including the spi header
-static void wiznet_pio_spi_write_buffer(uint8_t* pBuf, uint16_t len) {
+void wiznet_pio_spi_write_buffer(const uint8_t *pBuf, uint16_t len) {
     assert(active_state);
     if (len == SPI_HEADER_LEN && active_state->spi_header_count == 0) {
         memcpy(active_state->spi_header, pBuf, SPI_HEADER_LEN); // expect another call
         active_state->spi_header_count = SPI_HEADER_LEN;
     } else {
         if (active_state->spi_header_count == SPI_HEADER_LEN) {
-            if (!wiznet_pio_spi_transfer(active_state, active_state->spi_header, SPI_HEADER_LEN, NULL, 0)) {
+            if (!wiznet_pio_spi_transfer_impl(active_state, active_state->spi_header, SPI_HEADER_LEN, NULL, 0)) {
                 panic("spi failed writing header");
             }
             active_state->spi_header_count = 0;
         }
         assert(active_state->spi_header_count == 0);
-        if (!wiznet_pio_spi_transfer(active_state, pBuf, len, NULL, 0)) {
+        if (!wiznet_pio_spi_transfer_impl(active_state, pBuf, len, NULL, 0)) {
             panic("spi failed writing buffer");
         }
     }

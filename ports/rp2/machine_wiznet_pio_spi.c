@@ -24,6 +24,8 @@
  * THE SOFTWARE.
  */
 
+
+
 #include "py/runtime.h"
 #include "py/mphal.h"
 #include "py/mperrno.h"
@@ -48,16 +50,19 @@ static void machine_wiznet_pio_spi_print(const mp_print_t *print, mp_obj_t self_
     //     self->spi.delay_half, mp_hal_pin_name(self->spi.sck), mp_hal_pin_name(self->spi.mosi), mp_hal_pin_name(self->spi.miso));
 }
 
-static mp_obj_t machine_wiznet_pio_spi_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
+mp_obj_t machine_wiznet_pio_spi_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     #if (_WIZCHIP_ == W6300)
-    enum { ARG_baudrate, ARG_sck, ARG_io0, ARG_io1, ARG_io2, ARG_io3 };
+    enum { ARG_baudrate, ARG_sck, ARG_cs, ARG_io0, ARG_io1, ARG_io2, ARG_io3 };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_baudrate, MP_ARG_INT, {.u_int = DEFAULT_WIZNET_PIO_SPI_BAUDRATE} },
-        { MP_QSTR_sck,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NEW_SMALL_INT(MICROPY_HW_WIZNET_PIO_SPI_SCK)} },
-        { MP_QSTR_io0,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NEW_SMALL_INT(MICROPY_HW_WIZNET_PIO_SPI_DATA0)} },
-        { MP_QSTR_io1,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NEW_SMALL_INT(MICROPY_HW_WIZNET_PIO_SPI_DATA1)} },
-        { MP_QSTR_io2,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NEW_SMALL_INT(MICROPY_HW_WIZNET_PIO_SPI_DATA2)} },
-        { MP_QSTR_io3,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NEW_SMALL_INT(MICROPY_HW_WIZNET_PIO_SPI_DATA3)} },
+        { MP_QSTR_sck,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+        { MP_QSTR_cs,       MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+        { MP_QSTR_io0,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+        { MP_QSTR_io1,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+        #if (_WIZCHIP_QSPI_MODE_ == QSPI_QUAD_MODE)
+        { MP_QSTR_io2,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+        { MP_QSTR_io3,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+        #endif
     };
     #else // _WIZCHIP_ == 5500 (W55RP20)
     enum { ARG_baudrate, ARG_sck, ARG_mosi, ARG_miso };
@@ -86,8 +91,9 @@ static mp_obj_t machine_wiznet_pio_spi_make_new(const mp_obj_type_t *type, size_
     // set parameters
     if (args[ARG_sck].u_obj == MP_OBJ_NULL
         || args[ARG_io0].u_obj == MP_OBJ_NULL
-        || args[ARG_io1].u_obj == MP_OBJ_NULL) {
-        mp_raise_ValueError(MP_ERROR_TEXT("must specify all of sck/io0/io1"));
+        || args[ARG_io1].u_obj == MP_OBJ_NULL
+        || args[ARG_cs].u_obj == MP_OBJ_NULL) {
+        mp_raise_ValueError(MP_ERROR_TEXT("must specify all of sck/cs/io0/io1"));
     }
     #if (_WIZCHIP_QSPI_MODE_ == QSPI_QUAD_MODE)
     if (args[ARG_io2].u_obj == MP_OBJ_NULL
@@ -99,6 +105,7 @@ static mp_obj_t machine_wiznet_pio_spi_make_new(const mp_obj_type_t *type, size_
     wiznet_pio_spi_config.clock_div_major = clock_div;
     wiznet_pio_spi_config.clock_div_minor = 0;
     wiznet_pio_spi_config.clock_pin  = mp_hal_get_pin_obj(args[ARG_sck].u_obj);
+    wiznet_pio_spi_config.cs_pin     = mp_hal_get_pin_obj(args[ARG_cs].u_obj);
     wiznet_pio_spi_config.data_io0_pin = mp_hal_get_pin_obj(args[ARG_io0].u_obj);
     wiznet_pio_spi_config.data_io1_pin = mp_hal_get_pin_obj(args[ARG_io1].u_obj);
     #if (_WIZCHIP_QSPI_MODE_ == QSPI_QUAD_MODE)

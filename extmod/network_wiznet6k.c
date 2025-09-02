@@ -80,7 +80,7 @@
 
 extern const mp_obj_type_t mod_network_nic_type_wiznet6k;
 
-#if (_WIZCHIP_ == W6300)
+#if (MICROPY_WIZNET_PIO == 1)
 #include "wiznet_pio_spi.h"
 
 extern wiznet_pio_spi_handle_t wiznet_pio_spi_handle;
@@ -187,11 +187,19 @@ static void wiz_cris_exit(void) {
 }
 
 static void wiz_cs_select(void) {
+    #if (_WIZCHIP_ == W6300)
+    (*wiznet_pio_spi_handle)->frame_start();
+    #else
     mp_hal_pin_low(wiznet6k_obj.cs);
+    #endif
 }
 
 static void wiz_cs_deselect(void) {
+    #if (_WIZCHIP_ == W6300)
+    (*wiznet_pio_spi_handle)->frame_end();
+    #else
     mp_hal_pin_high(wiznet6k_obj.cs);
+    #endif
 }
 
 void mpy_wiznet_yield(void) {
@@ -222,35 +230,11 @@ static void wiz_spi_writebyte(const uint8_t buf) {
 }
 
 #if (_WIZCHIP_ == W6300)
-
-void wiz_pio_cs_select(void) {
-        (*wiznet_pio_spi_handle)->frame_start();
-    // wiznet_pio_spi_frame_start();
-    printf("QSPI cs_select\n");
-}
-
-void wiz_pio_cs_deselect(void) {
-        (*wiznet_pio_spi_handle)->frame_end();
-    // wiznet_pio_spi_frame_end();
-    printf("QSPI cs_deselect\n");
-}
-
-
 void wiz_qspi_readbyte(uint8_t opcode, uint16_t addr, uint8_t *buf, uint16_t len) {
-        // if (!buf || !len) return;
     wiznet_pio_spi_read_byte(opcode, addr, buf, len);
-
-    // uint16_t n = len < 8 ? len : 8;
-    // printf("QSPI-RDVAL addr=%04x len=%u :", addr, (unsigned)len);
-    // for (uint16_t i = 0; i < n; ++i) {
-    //     printf(" %02x", buf[i]);
-    // }
-    // printf("\n");
 }
 
 void wiz_qspi_writebyte(uint8_t opcode, uint16_t addr, uint8_t *buf, uint16_t len) {
-
-    //    if (!buf || !len) return;
     wiznet_pio_spi_write_byte(opcode, addr, buf, len);
 }
 #endif // (_WIZCHIP_ == W6300)
@@ -837,7 +821,7 @@ static mp_obj_t wiznet6k_make_new(const mp_obj_type_t *type, size_t n_args, size
         mp_obj_t args[] = {
             MP_OBJ_NEW_SMALL_INT(MICROPY_HW_WIZNET_SPI_ID),
             MP_OBJ_NEW_SMALL_INT(MICROPY_HW_WIZNET_SPI_BAUDRATE),
-            MP_ROM_QSTR(MP_QSTR_sck), mp_pin_makef6_new(NULL, 1, 0, &spi_obj),
+            MP_ROM_QSTR(MP_QSTR_sck), mp_pin_make_new(NULL, 1, 0, &spi_obj),
             MP_ROM_QSTR(MP_QSTR_miso), mp_pin_make_new(NULL, 1, 0, &miso_obj),
             MP_ROM_QSTR(MP_QSTR_mosi), mp_pin_make_new(NULL, 1, 0, &mosi_obj),
         };
@@ -953,27 +937,24 @@ static mp_obj_t wiznet6k_active(size_t n_args, const mp_obj_t *args) {
                 mp_hal_delay_ms(1); // datasheet says 2us
                 mp_hal_pin_high(wiznet6k_obj.rst);
                 mp_hal_delay_ms(160); // datasheet says 150ms
+                #if _WIZCHIP_ == 6300
+                if (wiznet_pio_spi_handle && (*wiznet_pio_spi_handle)->set_active) {
+                    (*wiznet_pio_spi_handle)->set_active(wiznet_pio_spi_handle);   // ★ 여기!
+                }
+                #endif
 
                 // Set physical interface callbacks
                 reg_wizchip_cris_cbfunc(wiz_cris_enter, wiz_cris_exit);
-                reg_wizchip_cs_cbfunc(wiz_cs_select, wiz_cs_deselect);
+                // reg_wizchip_cs_cbfunc(wiz_cs_select, wiz_cs_deselect);
                 #if _WIZCHIP_ == 6100
+                reg_wizchip_cs_cbfunc(wiz_cs_select, wiz_cs_deselect);
                 reg_wizchip_spi_cbfunc(wiz_spi_readbyte, wiz_spi_writebyte, wiz_spi_read, wiz_spi_write);
                 reg_wizchip_spiburst_cbfunc(wiz_spi_read, wiz_spi_write);
                 #elif _WIZCHIP_ == 6300
-
-
-                reg_wizchip_cs_cbfunc(wiz_pio_cs_select, wiz_pio_cs_deselect);
-                // printf("QSPI reg_wizchip_cs_cbfunc R=%p W=%p\n", (void*)wiz_pio_cs_select, (void*)wiz_pio_cs_deselect);
-
-                reg_wizchip_qspi_cbfunc(wiz_qspi_readbyte, wiz_qspi_writebyte);
-                // printf("QSPI cb R=%p W=%p\n", (void*)wiz_qspi_readbyte, (void*)wiz_qspi_writebyte);
-                printf("WIZNET6K: Using QSPI interface1\n");
-
-
-
-
+                reg_wizchip_qspi_cbfunc((*wiznet_pio_spi_handle)->read_byte, (*wiznet_pio_spi_handle)->write_byte);
+                reg_wizchip_cs_cbfunc(wiz_cs_select, wiz_cs_deselect);
                 #else
+                reg_wizchip_cs_cbfunc(wiz_cs_select, wiz_cs_deselect);
                 reg_wizchip_spi_cbfunc(wiz_spi_readbyte, wiz_spi_writebyte);
                 reg_wizchip_spiburst_cbfunc(wiz_spi_read, wiz_spi_write);
                 #endif
@@ -985,7 +966,6 @@ static mp_obj_t wiznet6k_active(size_t n_args, const mp_obj_t *args) {
 
                 // Configure lwip/provided specific settings
                 wiznet6k_init();
-                printf("WIZNET6K: wiznet6k_init\n");
 
                 // If the device doesn't have a MAC address then set one
                 #if WIZNET6K_WITH_LWIP_STACK
@@ -1026,22 +1006,9 @@ static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(wiznet6k_active_obj, 1, 2, wiznet6k_a
 // ifconfig([(ip, subnet, gateway, dns)])
 // Get/set IP address, subnet mask, gateway and DNS.
 static mp_obj_t wiznet6k_ifconfig(size_t n_args, const mp_obj_t *args) {
-
-
-            const mp_obj_type_t *t = mp_obj_get_type(args[0]);
-    mp_printf(&mp_plat_print, "ifconfig(): self=%p type=%q n_args=%u\n",
-              MP_OBJ_TO_PTR(args[0]), t->name, (unsigned)n_args);
-
-
     wiz_NetInfo netinfo;
     wiznet6k_obj_t *self = MP_OBJ_TO_PTR(args[0]);
-
-                            printf("WIZNET6K: wiznet6k_ifconfig 0\n");
-
     ctlnetwork(CN_GET_NETINFO, &netinfo);
-
-                            printf("WIZNET6K: wiznet6k_ifconfig 1\n");
-
     if (n_args == 1) {
         // Get IP addresses
         mp_obj_t tuple[4] = {
@@ -1078,9 +1045,6 @@ static mp_obj_t wiznet6k_ifconfig(size_t n_args, const mp_obj_t *args) {
         self->netinfo.dhcp = NETINFO_STATIC;
         #endif
         mp_obj_t *items;
-
-                                printf("WIZNET6K: wiznet6k_ifconfig 2\n");
-
         mp_obj_get_array_fixed_n(args[1], 4, &items);
         netutils_parse_ipv4_addr(items[0], netinfo.ip, NETUTILS_BIG);
         netutils_parse_ipv4_addr(items[1], netinfo.sn, NETUTILS_BIG);
@@ -1088,9 +1052,6 @@ static mp_obj_t wiznet6k_ifconfig(size_t n_args, const mp_obj_t *args) {
         netutils_parse_ipv4_addr(items[3], netinfo.dns, NETUTILS_BIG);
 
         ctlnetwork(CN_SET_NETINFO, &netinfo);
-        printf("SET->GET %u.%u.%u.%u\n", netinfo.ip[0], netinfo.ip[1], netinfo.ip[2], netinfo.ip[3]);
-        printf("WIZNET6K: wiznet6k_ifconfig 3\n");
-
         return mp_const_none;
     }
 }

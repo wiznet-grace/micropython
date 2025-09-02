@@ -175,7 +175,7 @@ typedef struct _mp_machine_soft_i2c_obj_t {
 
 #endif
 
-#if MICROPY_PY_MACHINE_SPI || MICROPY_PY_MACHINE_SOFTSPI || MICROPY_PY_MACHINE_PIO_SPI
+#if MICROPY_PY_MACHINE_SPI || MICROPY_PY_MACHINE_SOFTSPI || MICROPY_PY_MACHINE_WIZNET_PIO_SPI
 
 // SPI protocol.
 typedef struct _mp_machine_spi_p_t {

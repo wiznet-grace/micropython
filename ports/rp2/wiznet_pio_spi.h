@@ -72,7 +72,7 @@ typedef struct wiznet_pio_spi_funcs {
 
 wiznet_pio_spi_handle_t wiznet_pio_spi_open(const wiznet_pio_spi_config_t *spi_config);
 void wiznet_pio_spi_close(wiznet_pio_spi_handle_t handle);
-bool wiznet_pio_spi_transfer(const uint8_t *tx, size_t tx_length, uint8_t *rx, size_t rx_length);
+// static bool wiznet_pio_spi_transfer_impl(spi_pio_state_t *state, const uint8_t *tx, size_t tx_length, uint8_t *rx, size_t rx_length);
 void wiznet_pio_spi_read_buffer(uint8_t *pBuf, uint16_t len);
 void wiznet_pio_spi_write_buffer(const uint8_t *pBuf, uint16_t len);
 
