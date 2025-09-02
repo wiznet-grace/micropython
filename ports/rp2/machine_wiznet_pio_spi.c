@@ -52,26 +52,26 @@ static void machine_wiznet_pio_spi_print(const mp_print_t *print, mp_obj_t self_
 
 mp_obj_t machine_wiznet_pio_spi_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     #if (_WIZCHIP_ == W6300)
-    enum { ARG_baudrate, ARG_sck, ARG_cs, ARG_io0, ARG_io1, ARG_io2, ARG_io3 };
-    static const mp_arg_t allowed_args[] = {
-        { MP_QSTR_baudrate, MP_ARG_INT, {.u_int = DEFAULT_WIZNET_PIO_SPI_BAUDRATE} },
-        { MP_QSTR_sck,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
-        { MP_QSTR_cs,       MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
-        { MP_QSTR_io0,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
-        { MP_QSTR_io1,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
-        #if (_WIZCHIP_QSPI_MODE_ == QSPI_QUAD_MODE)
-        { MP_QSTR_io2,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
-        { MP_QSTR_io3,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
-        #endif
-    };
+        enum { ARG_baudrate, ARG_sck, ARG_cs, ARG_io0, ARG_io1, ARG_io2, ARG_io3 };
+        static const mp_arg_t allowed_args[] = {
+            { MP_QSTR_baudrate, MP_ARG_INT, {.u_int = DEFAULT_WIZNET_PIO_SPI_BAUDRATE} },
+            { MP_QSTR_sck,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+            { MP_QSTR_cs,       MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+            { MP_QSTR_io0,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+            { MP_QSTR_io1,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+            #if (_WIZCHIP_QSPI_MODE_ == QSPI_QUAD_MODE)
+            { MP_QSTR_io2,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+            { MP_QSTR_io3,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+            #endif
+        };
     #else // _WIZCHIP_ == 5500 (W55RP20)
-    enum { ARG_baudrate, ARG_sck, ARG_mosi, ARG_miso };
-    static const mp_arg_t allowed_args[] = {
-        { MP_QSTR_baudrate, MP_ARG_INT, {.u_int = DEFAULT_WIZNET_PIO_SPI_BAUDRATE} },
-        { MP_QSTR_sck,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
-        { MP_QSTR_mosi,     MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
-        { MP_QSTR_miso,     MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
-    };
+        enum { ARG_baudrate, ARG_sck, ARG_mosi, ARG_miso };
+        static const mp_arg_t allowed_args[] = {
+            { MP_QSTR_baudrate, MP_ARG_INT, {.u_int = DEFAULT_WIZNET_PIO_SPI_BAUDRATE} },
+            { MP_QSTR_sck,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+            { MP_QSTR_mosi,     MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+            { MP_QSTR_miso,     MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+        };
     #endif
     
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];

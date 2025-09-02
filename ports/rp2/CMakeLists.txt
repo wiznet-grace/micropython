@@ -488,29 +488,28 @@ if (MICROPY_PY_NETWORK_WIZNET6K)
         message(FATAL_ERROR " wiznet6k not initialized.\n Run 'make BOARD=${MICROPY_BOARD} submodules'")
     endif()
 
+    if(NOT DEFINED MICROPY_WIZNET_PIO)
+        set(MICROPY_WIZNET_PIO 0)
+    endif()
+
     target_compile_definitions(${MICROPY_TARGET} PRIVATE
         MICROPY_PY_NETWORK_WIZNET6K=1
+        _WIZCHIP_=${MICROPY_PY_NETWORK_WIZNET6K}
         WIZCHIP_PREFIXED_EXPORTS=0
         MICROPY_WIZNET_PIO=${MICROPY_WIZNET_PIO}
-        _WIZCHIP_=${MICROPY_PY_NETWORK_WIZNET6K}
         WIZCHIP_YIELD=mpy_wiznet_yield
     )
 
-
     if(MICROPY_PY_NETWORK_WIZNET6K EQUAL W6300)
-    if(NOT DEFINED MICROPY_WIZNET_PIO)
-            set(MICROPY_WIZNET_PIO 1)
-    endif()
+        if(NOT DEFINED MICROPY_WIZNET_PIO)
+                set(MICROPY_WIZNET_PIO 1)
+        endif()
         if(NOT DEFINED MICROPY_PY_WIZNET6K_QSPI_MODE)
             set(MICROPY_PY_WIZNET6K_QSPI_MODE QSPI_QUAD_MODE)
         endif()
         target_compile_definitions(${MICROPY_TARGET} PRIVATE
             _WIZCHIP_QSPI_MODE_=${MICROPY_PY_WIZNET6K_QSPI_MODE}
         )
-    endif()
-
-    if(NOT DEFINED MICROPY_WIZNET_PIO)
-            set(MICROPY_WIZNET_PIO 0)
     endif()
 
     if (MICROPY_PY_LWIP)

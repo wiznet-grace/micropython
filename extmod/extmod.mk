@@ -494,7 +494,7 @@ WIZNET6K_DIR=lib/wiznet6k
 GIT_SUBMODULES += lib/wiznet6k
 INC += -I$(TOP)/$(WIZNET6K_DIR) -I$(TOP)/$(WIZNET6K_DIR)/Ethernet
 CFLAGS += -DMICROPY_PY_NETWORK_WIZNET6K=$(MICROPY_PY_NETWORK_WIZNET6K) -D_WIZCHIP_=$(MICROPY_PY_NETWORK_WIZNET6K) -DMICROPY_WIZNET_PIO=$(MICROPY_WIZNET_PIO)
-CFLAGS_THIRDPARTY += -DWIZCHIP_PREFIXED_EXPORTS=1
+CFLAGS_THIRDPARTY += -DWIZCHIP_PREFIXED_EXPORTS=0
 ifeq ($(MICROPY_PY_LWIP),1)
 # When using MACRAW mode (with lwIP), maximum buffer space must be used for the raw socket
 CFLAGS_THIRDPARTY += -DWIZCHIP_USE_MAX_BUFFER
@@ -508,6 +508,7 @@ SRC_THIRDPARTY_C += $(addprefix $(WIZNET6K_DIR)/,\
 	)
 
 endif
+$(BUILD)/$(WIZNET6K_DIR)/%.o: CFLAGS += -Wno-unused-variable -Wno-misleading-indentation -Wno-incompatible-pointer-types -Wno-error=unused-function -Wno-comment
 endif # MICROPY_PY_NETWORK_WIZNET6K
 
 ifeq ($(MICROPY_PY_NETWORK_ESP_HOSTED),1)

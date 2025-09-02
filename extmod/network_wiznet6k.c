@@ -80,14 +80,10 @@
 
 extern const mp_obj_type_t mod_network_nic_type_wiznet6k;
 
-#if (MICROPY_WIZNET_PIO == 1)
+#if (MICROPY_WIZNET_PIO)
 #include "wiznet_pio_spi.h"
 
 extern wiznet_pio_spi_handle_t wiznet_pio_spi_handle;
-
-extern void wiznet_pio_spi_read_byte(uint8_t opcode, uint16_t addr, uint8_t *rx, uint16_t rx_len);
-extern void wiznet_pio_spi_write_byte(uint8_t opcode, uint16_t addr, uint8_t *tx, uint16_t tx_len);
-
 #endif
 
 int32_t wizchip_sendto(uint8_t sn, uint8_t *buf, uint16_t len, uint8_t *addr, uint16_t port) {
@@ -187,7 +183,8 @@ static void wiz_cris_exit(void) {
 }
 
 static void wiz_cs_select(void) {
-    #if (_WIZCHIP_ == W6300)
+    #if (MICROPY_WIZNET_PIO)
+    printf("[PIO-QSPI] CS select\n");
     (*wiznet_pio_spi_handle)->frame_start();
     #else
     mp_hal_pin_low(wiznet6k_obj.cs);
@@ -195,7 +192,7 @@ static void wiz_cs_select(void) {
 }
 
 static void wiz_cs_deselect(void) {
-    #if (_WIZCHIP_ == W6300)
+    #if (MICROPY_WIZNET_PIO)
     (*wiznet_pio_spi_handle)->frame_end();
     #else
     mp_hal_pin_high(wiznet6k_obj.cs);
@@ -228,16 +225,6 @@ static uint8_t wiz_spi_readbyte() {
 static void wiz_spi_writebyte(const uint8_t buf) {
     wiznet6k_obj.spi_transfer(wiznet6k_obj.spi, 1, &buf, NULL);
 }
-
-#if (_WIZCHIP_ == W6300)
-void wiz_qspi_readbyte(uint8_t opcode, uint16_t addr, uint8_t *buf, uint16_t len) {
-    wiznet_pio_spi_read_byte(opcode, addr, buf, len);
-}
-
-void wiz_qspi_writebyte(uint8_t opcode, uint16_t addr, uint8_t *buf, uint16_t len) {
-    wiznet_pio_spi_write_byte(opcode, addr, buf, len);
-}
-#endif // (_WIZCHIP_ == W6300)
 
 static void wiznet6k_get_mac_address(wiznet6k_obj_t *self, uint8_t mac[6]) {
     (void)self;
@@ -950,13 +937,17 @@ static mp_obj_t wiznet6k_active(size_t n_args, const mp_obj_t *args) {
                 reg_wizchip_cs_cbfunc(wiz_cs_select, wiz_cs_deselect);
                 reg_wizchip_spi_cbfunc(wiz_spi_readbyte, wiz_spi_writebyte, wiz_spi_read, wiz_spi_write);
                 reg_wizchip_spiburst_cbfunc(wiz_spi_read, wiz_spi_write);
-                #elif _WIZCHIP_ == 6300
-                reg_wizchip_qspi_cbfunc((*wiznet_pio_spi_handle)->read_byte, (*wiznet_pio_spi_handle)->write_byte);
+                #elif (MICROPY_WIZNET_PIO == 1) && (_WIZCHIP_ == 6300)
+                reg_wizchip_spi_cbfunc((*wiznet_pio_spi_handle)->read_byte, (*wiznet_pio_spi_handle)->write_byte);
                 reg_wizchip_cs_cbfunc(wiz_cs_select, wiz_cs_deselect);
+                // #elif (MICROPY_WIZNET_PIO == 1) && (_WIZCHIP_ == 5500)
+                //     reg_wizchip_cs_cbfunc(wiz_cs_select, wiz_cs_deselect);
+                //     reg_wizchip_spi_cbfunc((*wiznet_pio_spi_handle)->read_byte, (*wiznet_pio_spi_handle)->write_byte);
+                //     reg_wizchip_spiburst_cbfunc((*wiznet_pio_spi_handle)->read_buffer, (*wiznet_pio_spi_handle)->write_buffer);
                 #else
-                reg_wizchip_cs_cbfunc(wiz_cs_select, wiz_cs_deselect);
-                reg_wizchip_spi_cbfunc(wiz_spi_readbyte, wiz_spi_writebyte);
-                reg_wizchip_spiburst_cbfunc(wiz_spi_read, wiz_spi_write);
+                    reg_wizchip_cs_cbfunc(wiz_cs_select, wiz_cs_deselect);
+                    reg_wizchip_spi_cbfunc(wiz_spi_readbyte, wiz_spi_writebyte);
+                    reg_wizchip_spiburst_cbfunc(wiz_spi_read, wiz_spi_write);
                 #endif
 
                 #if (_WIZCHIP_ == 6100 || _WIZCHIP_ == 6300)
